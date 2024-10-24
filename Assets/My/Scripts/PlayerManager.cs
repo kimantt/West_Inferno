@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
+using UnityEngine.VFX;
 
 public class PlayerManager : MonoBehaviour
 {
@@ -12,16 +13,15 @@ public class PlayerManager : MonoBehaviour
     private Animator anim;
 
     [Header("Aim")]
-    [SerializeField]
-    private CinemachineVirtualCamera aimCam;
-    [SerializeField]
-    private GameObject aimImage;
-    [SerializeField]
-    private GameObject aimObj;
-    [SerializeField]
-    private float aimObjDis = 10f;
-    [SerializeField]
-    private LayerMask targetLayer;
+    [SerializeField] private CinemachineVirtualCamera aimCam;
+    [SerializeField] private GameObject aimImage;
+    [SerializeField] private GameObject aimObj;
+    [SerializeField] private float aimObjDis = 10f;
+    [SerializeField] private LayerMask targetLayer;
+
+    [SerializeField] private VisualEffect muzzleFlash;
+    [SerializeField] private GameObject muzzleLight;
+
 
     [Header("IK")]
     [SerializeField]
@@ -34,6 +34,7 @@ public class PlayerManager : MonoBehaviour
     //юс╫ц
     public GameObject pref;
     public Vector3 vec;
+    public VisualEffect bomb;
 
 
     // Start is called before the first frame update
@@ -53,6 +54,10 @@ public class PlayerManager : MonoBehaviour
         if(Input.GetKeyDown(KeyCode.C))
         {
             Instantiate(pref, vec, Quaternion.identity);
+        }
+        else if (Input.GetKeyDown(KeyCode.X))
+        {
+            bomb.Play();
         }
     }
 
@@ -95,6 +100,8 @@ public class PlayerManager : MonoBehaviour
             if (input.shoot)
             {
                 anim.SetBool("Shoot", true);
+                muzzleFlash.Play();
+                muzzleLight.SetActive(true);
                 if(enemy != null)
                 {
                     enemy.OnDead();
