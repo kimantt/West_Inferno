@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 using UnityEngine.VFX;
+using UnityEngine.SceneManagement;
 
 public class PlayerManager : MonoBehaviour
 {
@@ -18,10 +19,10 @@ public class PlayerManager : MonoBehaviour
     [SerializeField] private GameObject aimObj;
     [SerializeField] private float aimObjDis = 10f;
     [SerializeField] private LayerMask targetLayer;
+    [SerializeField] private bool isShoot;
 
     [SerializeField] private VisualEffect muzzleFlash;
     [SerializeField] private GameObject muzzleLight;
-
 
     [Header("IK")]
     [SerializeField]
@@ -29,12 +30,12 @@ public class PlayerManager : MonoBehaviour
     [SerializeField]
     private Rig aimRig;
 
-    private Enemy enemy;
+    [Header("Stats")]
+    [Range(0, 100)]
+    [SerializeField] private int hp;
 
-    //임시
-    public GameObject pref;
-    public Vector3 vec;
-    public VisualEffect bomb;
+    [SerializeField] private Enemy enemy;
+    [SerializeField] private GameObject bomb;
 
 
     // Start is called before the first frame update
@@ -43,6 +44,9 @@ public class PlayerManager : MonoBehaviour
         input = GetComponent<StarterAssetsInputs>();
         controller = GetComponent<ThirdPersonController>();
         anim = GetComponent<Animator>();
+
+        hp = 100;
+        isShoot = false;
     }
 
     // Update is called once per frame
@@ -50,14 +54,11 @@ public class PlayerManager : MonoBehaviour
     {
         AimCheck();
 
-        //임시
-        if(Input.GetKeyDown(KeyCode.C))
+        if (hp <= 0)
         {
-            Instantiate(pref, vec, Quaternion.identity);
-        }
-        else if (Input.GetKeyDown(KeyCode.X))
-        {
-            bomb.Play();
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+            SceneManager.LoadScene("ending");
         }
     }
 
@@ -79,9 +80,17 @@ public class PlayerManager : MonoBehaviour
                 targetPosition = hit.point;
                 aimObj.transform.position = hit.point;
 
-                //enemy = hit.collider.gameObject.GetComponent<Enemy>();
-                Transform highestParent = FindHighestParent(hit.collider.gameObject.transform);
-                enemy = highestParent.gameObject.GetComponent<Enemy>();
+                if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Enemy"))
+                {
+                    Transform highestParent = FindHighestParent(hit.collider.gameObject.transform);
+                    enemy = highestParent.gameObject.GetComponent<Enemy>();
+                    bomb = null;
+                }
+                else if(hit.collider.gameObject.layer == LayerMask.NameToLayer("Bomb"))
+                {
+                    bomb = hit.collider.gameObject;
+                    enemy = null;
+                }
             }
             else
             {
@@ -99,17 +108,38 @@ public class PlayerManager : MonoBehaviour
 
             if (input.shoot)
             {
-                anim.SetBool("Shoot", true);
-                muzzleFlash.Play();
-                muzzleLight.SetActive(true);
-                if(enemy != null)
+                if(!isShoot)
                 {
-                    enemy.OnDead();
+                    anim.SetBool("Shoot", true);
+                    muzzleFlash.Play();
+                    muzzleLight.SetActive(true);
+                    if (enemy != null && bomb == null)
+                    {
+                        enemy.OnDead();
+                    }
+                    else if(enemy == null && bomb != null)
+                    {
+                        VisualEffect effect = bomb.gameObject.GetComponent<VisualEffect>();
+                        MeshRenderer renderer = bomb.gameObject.GetComponent<MeshRenderer>();
+                        CapsuleCollider collider = bomb.gameObject.GetComponent<CapsuleCollider>();
+                        explosionObject explosion = bomb.GetComponent<explosionObject>();
+
+                        collider.enabled = false;
+                        renderer.enabled = false;
+                        effect.Play();
+                        explosion.bomb();
+                    }
+                    isShoot = true;
+                }
+                else
+                {
+                    input.shoot = false;
                 }
             }
             else
             {
                 anim.SetBool("Shoot", false);
+                isShoot = false;
             }
         }
         else
@@ -146,4 +176,8 @@ public class PlayerManager : MonoBehaviour
 
         return current; // 가장 높은 부모 반환
     }
+
+    public int getHp() { return hp; }
+
+    public void Damaged() { hp -= 15; }
 }
